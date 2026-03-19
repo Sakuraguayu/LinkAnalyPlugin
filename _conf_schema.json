@@ -1,0 +1,61 @@
+{
+  "screenshotsnap": {
+    "description": "是否启用web截图功能",
+    "type": "bool",
+    "hint": "针对未解析网站自动截图发送（推荐开启）",
+    "default": false
+  },
+  "enable_github_gitee": {
+    "description": "是否启用github/gitee解析",
+    "type": "bool",
+    "default": true
+  },
+  "enable_bilibili": {
+    "description": "是否启用bilibili解析",
+    "type": "bool",
+    "default": true
+  },
+  "enable_douyin": {
+    "description": "是否启用抖音解析",
+    "type": "bool",
+    "default": true
+  },
+  "enable_acfun": {
+    "description": "是否启用acfun解析",
+    "type": "bool",
+    "default": true
+  },
+  "enable_weibo": {
+    "description": "是否启用微博解析",
+    "type": "bool",
+    "default": false
+  },
+  "enable_nga": {
+    "description": "是否启用NGA解析",
+    "type": "bool",
+    "default": false
+  },
+  "enable_xhs": {
+    "description": "是否启用小红书解析",
+    "type": "bool",
+    "default": false
+  },
+  "enable_youtube": {
+    "description": "是否启用youtube解析",
+    "type": "bool",
+    "hint": "开启后需要填写下面的API Key和代理",
+    "default": true
+  },
+  "youtube_key": {
+    "description": "YouTube API Key",
+    "type": "string",
+    "hint": "去 https://developers.google.com/youtube/v3/getting-started 获取",
+    "default": ""
+  },
+  "youtube_proxy": {
+    "description": "YouTube HTTP代理",
+    "type": "string",
+    "hint": "格式: http://127.0.0.1:7890 （Clash/V2Ray常用）",
+    "default": "http://127.0.0.1:7890"
+  }
+}
