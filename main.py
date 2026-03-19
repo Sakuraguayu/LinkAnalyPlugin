@@ -1,24 +1,121 @@
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
+from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
-from astrbot.api import logger
+from astrbot import logger
+import re
+from typing import Optional
 
-@register("helloworld", "YourName", "一个简单的 Hello World 插件", "1.0.0")
-class MyPlugin(Star):
+# ====================== 导入你的解析器 ======================
+# 如果 core/__init__.py 已导出所有 Parser，直接 from .core import *
+# 否则逐个导入（推荐复制原 core/__init__.py 并确保导出）
+from .core import (
+    BilibiliParser, GitParser, DouyinParser, ScreenshotParser,
+    AcFunParser, WeiboParser, NGAParser, XHSparser, YoutubeParser
+)
+
+
+@register("linkanaly", "sheetung", "链接解析插件（支持 Bilibili 等 + 网页截图）", "1.6.3", "https://github.com/sheetung/LinkAnalyPlugin")
+class LinkAnaly(Star):
     def __init__(self, context: Context):
         super().__init__(context)
+        
+        # AstrBot 配置加载（如果你的版本 config 在 context.config，可直接用；否则改成 self.context.get_config()）
+        cfg = getattr(context, "config", {}) or {}
+        
+        self.screensnap_enabled = cfg.get("screenshotsnap", True)
+        self.enable_github_gitee = cfg.get("enable_github_gitee", True)
+        self.enable_bilibili = cfg.get("enable_bilibili", True)
+        self.enable_douyin = cfg.get("enable_douyin", True)
+        self.enable_acfun = cfg.get("enable_acfun", True)
+        self.enable_weibo = cfg.get("enable_weibo", False)
+        self.enable_nga = cfg.get("enable_nga", False)
+        self.enable_xhs = cfg.get("enable_xhs", False)
+        self.enable_youtube = cfg.get("enable_youtube", False)
+        
+        # 初始化所有解析器（原插件传 self.plugin，这里传 self；如果解析器报错，再改成传 cfg）
+        self.bilibili_parser = BilibiliParser(self)
+        self.git_parser = GitParser(self)
+        self.douyin_parser = DouyinParser(self)
+        self.screenshot_parser = ScreenshotParser(self)
+        self.acfun_parser = AcFunParser(self)
+        self.weibo_parser = WeiboParser(self)
+        self.nga_parser = NGAParser(self)
+        self.xhs_parser = XHSparser(self)
+        self.youtube_parser = YoutubeParser(self)
+        
+        # 构建链接处理器（完全保留原逻辑和优先级）
+        self.link_handlers = {}
+        if self.enable_bilibili:
+            self.link_handlers["bilibili"] = {
+                "patterns": [r"www\.bilibili\.com/video/(BV\w+)", r"b23\.tv/(BV\w+)", r"www\.bilibili\.com/video/av(\d+)"],
+                "handler": self.bilibili_parser.handle
+            }
+        if self.enable_github_gitee:
+            self.link_handlers["github"] = {"patterns": [r"github\.com/([^/]+)/([^/?#]+)"], "handler": self.git_parser.handle_github}
+            self.link_handlers["gitee"] = {"patterns": [r"gitee\.com/([^/]+)/([^/?#]+)"], "handler": self.git_parser.handle_gitee}
+        if self.enable_douyin:
+            self.link_handlers["douyin"] = {
+                "patterns": [r"v\.douyin\.com/([^/]+)/", r"www\.douyin\.com/video/([^/]+)/"],
+                "handler": self.douyin_parser.handle
+            }
+        if self.enable_acfun:
+            self.link_handlers["acfun"] = {"patterns": [r"www\.acfun\.cn/v/(\w+)", r"acfun\.cn/v/(\w+)"], "handler": self.acfun_parser.handle}
+        if self.enable_weibo:
+            self.link_handlers["weibo"] = {
+                "patterns": [r"weibo\.com/\d+/([a-zA-Z0-9]+)", r"sina\.weibo\.com/\d+/([a-zA-Z0-9]+)", r"weibo\.cn/\d+/([a-zA-Z0-9]+)"],
+                "handler": self.weibo_parser.handle
+            }
+        if self.enable_nga:
+            self.link_handlers["nga"] = {
+                "patterns": [r"nga\.178\.com/read\?tid=(\d+)", r"bbs\.nga\.cn/read\?tid=(\d+)", r"ngabbs\.com/read\?tid=(\d+)", 
+                             r"nga\.178\.com/thread-(\d+)-(\d+)-(\d+)\.html"],
+                "handler": self.nga_parser.handle
+            }
+        if self.enable_xhs:
+            self.link_handlers["xhs"] = {
+                "patterns": [r"xhs\.com/notes/(\d+)", r"xiaohongshu\.com/notes/(\d+)", r"xhs\.com/(explore|home)/(\d+)"],
+                "handler": self.xhs_parser.handle
+            }
+        if self.enable_youtube:
+            self.link_handlers["youtube"] = {
+                "patterns": [r'www\.youtube\.com/watch\?v=([\w-]{11})', r'youtu\.be/([\w-]{11})', r'youtube\.com/shorts/([\w-]{11})'],
+                "handler": self.youtube_parser.handle
+            }
+        if self.screensnap_enabled:
+            self.link_handlers["screenshot"] = {
+                "patterns": [r"(https?://[^\s]+)"],
+                "handler": self.screenshot_parser.handle,
+                "priority": -1   # 兜底
+            }
 
-    async def initialize(self):
-        """可选择实现异步的插件初始化方法，当实例化该插件类之后会自动调用该方法。"""
+    @filter.on_message()   # 自动监听所有消息（非命令模式）
+    async def on_message(self, event: AstrMessageEvent):
+        msg = str(event.message_str or event.get_message()).strip()   # 根据实际 AstrMessageEvent 属性微调
 
-    # 注册指令的装饰器。指令名为 helloworld。注册成功后，发送 `/helloworld` 就会触发这个指令，并回复 `你好, {user_name}!`
-    @filter.command("helloworld")
-    async def helloworld(self, event: AstrMessageEvent):
-        """这是一个 hello world 指令""" # 这是 handler 的描述，将会被解析方便用户了解插件内容。建议填写。
-        user_name = event.get_sender_name()
-        message_str = event.message_str # 用户发的纯文本消息字符串
-        message_chain = event.get_messages() # 用户所发的消息的消息链 # from astrbot.api.message_components import *
-        logger.info(message_chain)
-        yield event.plain_result(f"Hello, {user_name}, 你发了 {message_str}!") # 发送一条纯文本消息
+        for platform in self.link_handlers.values():
+            match = self._match_link(msg, platform["patterns"])
+            if match:
+                result = await platform["handler"](match)
+                if result.get("skip"):
+                    continue
+                
+                if result.get("success"):
+                    # 发送图片（YouTube 原插件会跳过图片）
+                    if result.get("image_url"):
+                        await event.send_image(result["image_url"])
+                    elif result.get("image_base64"):
+                        await event.send_image(base64=result["image_base64"])
+                    
+                    await event.reply(result["message"])
+                else:
+                    await event.reply(result["message"])
+                
+                # 阻止后续处理（相当于原 prevent_default）
+                event.stop_propagation()
+                return
 
-    async def terminate(self):
-        """可选择实现异步的插件销毁方法，当插件被卸载/停用时会调用。"""
+    # ====================== 工具方法 ======================
+    def _match_link(self, msg: str, patterns: list) -> Optional[re.Match]:
+        for pattern in patterns:
+            if match := re.search(pattern, msg):
+                return match
+        return None
