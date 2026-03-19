@@ -11,4 +11,4 @@ enable_youtube: true                     # 是否启用youtube解析（建议开
 
 # ==================== YouTube 专用配置 ====================
 youtube_key: ""                          # ← 这里填你的 YouTube API Key
-youtube_proxy: ""                        # ← 这里填代理，例如 http://127.0.0.1:7890
+youtube_proxy: "http://192.168.0.123:2222"                        # ← 这里填代理，例如 http://127.0.0.1:7890
