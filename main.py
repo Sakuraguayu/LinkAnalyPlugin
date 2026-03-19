@@ -4,7 +4,10 @@ from astrbot.api import logger
 import re
 from typing import Optional
 
-# ====================== 导入解析器（core/__init__.py 已导出所有） ======================
+# ====================== 新增：富媒体消息链（解决两条回复） ======================
+import astrbot.api.message_components as Comp
+
+# ====================== 导入解析器（core/ 保持不变） ======================
 from .core import (
     BilibiliParser, GitParser, DouyinParser, ScreenshotParser,
     AcFunParser, WeiboParser, NGAParser, XHSparser, YoutubeParser
@@ -16,7 +19,7 @@ class LinkAnaly(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
         
-        # ==================== 给所有 Parser 提供 get_config() 兼容层 ====================
+        # get_config 兼容层（不变）
         def get_config(self_obj):
             cfg = config or getattr(context, "config", {}) or getattr(context, "plugin_config", {}) or {}
             return cfg
@@ -24,7 +27,6 @@ class LinkAnaly(Star):
         
         cfg = self.get_config()
         
-        # 完全复制原插件默认值
         self.screensnap_enabled = cfg.get("screenshotsnap", False)
         self.enable_github_gitee = cfg.get("enable_github_gitee", True)
         self.enable_bilibili = cfg.get("enable_bilibili", True)
@@ -35,7 +37,6 @@ class LinkAnaly(Star):
         self.enable_xhs = cfg.get("enable_xhs", False)
         self.enable_youtube = cfg.get("enable_youtube", True)
         
-        # 初始化解析器
         self.bilibili_parser = BilibiliParser(self)
         self.git_parser = GitParser(self)
         self.douyin_parser = DouyinParser(self)
@@ -46,7 +47,6 @@ class LinkAnaly(Star):
         self.xhs_parser = XHSparser(self)
         self.youtube_parser = YoutubeParser(self)
         
-        # ====================== 完全复制原插件 link_handlers ======================
         self.link_handlers = {}
         
         if self.enable_bilibili:
@@ -124,15 +124,17 @@ class LinkAnaly(Star):
                 if result.get("skip"):
                     continue
                 
-                # 发送图片（截图服务返回 URL）
+                # ====================== 优化重点：合并成一条消息 ======================
+                chain = []
                 if result.get("image_url"):
-                    yield event.image_result(result["image_url"])
-                
-                # 发送文字
+                    chain.append(Comp.Image.fromURL(result["image_url"]))
                 if result.get("message"):
-                    yield event.plain_result(result["message"])
+                    chain.append(Comp.Plain(result["message"]))
                 
-                # 阻止后续处理器（和原 Langbot 一致）
+                if chain:  # 有内容才发送
+                    yield event.chain_result(chain)
+                
+                # 阻止后续处理器
                 event.stop_event()
                 return
 
