@@ -2,6 +2,6 @@ name: linkanaly
 display_name: 链接解析
 version: 1.6.3
 author: sheetung
-description: 解析聊天中的 Gitee/GitHub/Bilibili/Douyin/AcFun/YouTube/微博/NGA/小红书链接 + 网页截图
+description: 自动解析 Gitee/GitHub/Bilibili/抖音/AcFun/YouTube/微博/NGA/小红书 + 兜底网页截图
 repo: https://github.com/sheetung/LinkAnalyPlugin
 tags: ["link", "parse", "bilibili", "screenshot"]
