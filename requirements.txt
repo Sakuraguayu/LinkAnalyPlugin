@@ -1,1 +1,6 @@
-langbot-plugin
+requests
+aiohttp
+playwright          # 截图功能必备（运行前执行 playwright install）
+beautifulsoup4      # 大部分解析器会用到
+yt-dlp              # YouTube 可能需要
+# 如果还有其他解析器报缺失库，再补充
