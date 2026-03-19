@@ -18,7 +18,6 @@ class LinkAnaly(Star):
         
         # ==================== 给所有 Parser 提供 get_config() 兼容层 ====================
         def get_config(self_obj):
-            # 优先使用传入的 config，其次 context 配置
             cfg = config or getattr(context, "config", {}) or getattr(context, "plugin_config", {}) or {}
             return cfg
         self.get_config = get_config.__get__(self)
@@ -36,7 +35,7 @@ class LinkAnaly(Star):
         self.enable_xhs = cfg.get("enable_xhs", False)
         self.enable_youtube = cfg.get("enable_youtube", True)
         
-        # 初始化解析器（传 self，让 get_config 生效）
+        # 初始化解析器
         self.bilibili_parser = BilibiliParser(self)
         self.git_parser = GitParser(self)
         self.douyin_parser = DouyinParser(self)
@@ -47,7 +46,7 @@ class LinkAnaly(Star):
         self.xhs_parser = XHSparser(self)
         self.youtube_parser = YoutubeParser(self)
         
-        # ====================== 完全复制原插件 link_handlers（优先级顺序不变） ======================
+        # ====================== 完全复制原插件 link_handlers ======================
         self.link_handlers = {}
         
         if self.enable_bilibili:
@@ -57,14 +56,8 @@ class LinkAnaly(Star):
             }
         
         if self.enable_github_gitee:
-            self.link_handlers["github"] = {
-                "patterns": [r"github\.com/([^/]+)/([^/?#]+)"],
-                "handler": self.git_parser.handle_github
-            }
-            self.link_handlers["gitee"] = {
-                "patterns": [r"gitee\.com/([^/]+)/([^/?#]+)"],
-                "handler": self.git_parser.handle_gitee
-            }
+            self.link_handlers["github"] = {"patterns": [r"github\.com/([^/]+)/([^/?#]+)"], "handler": self.git_parser.handle_github}
+            self.link_handlers["gitee"] = {"patterns": [r"gitee\.com/([^/]+)/([^/?#]+)"], "handler": self.git_parser.handle_gitee}
         
         if self.enable_douyin:
             self.link_handlers["douyin"] = {
@@ -131,7 +124,7 @@ class LinkAnaly(Star):
                 if result.get("skip"):
                     continue
                 
-                # 发送图片（仅支持 image_url，截图服务返回的就是 URL）
+                # 发送图片（截图服务返回 URL）
                 if result.get("image_url"):
                     yield event.image_result(result["image_url"])
                 
@@ -139,7 +132,7 @@ class LinkAnaly(Star):
                 if result.get("message"):
                     yield event.plain_result(result["message"])
                 
-                # 阻止后续处理器（和原插件一致）
+                # 阻止后续处理器（和原 Langbot 一致）
                 event.stop_event()
                 return
 
