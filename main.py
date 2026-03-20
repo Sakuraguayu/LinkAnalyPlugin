@@ -10,7 +10,7 @@ class LinkAnalyPlugin(Star):
         logger.info("LinkAnalyPlugin 已加载 - 支持微博/NGA/小红书网页截图")
 
     # 自动监听所有消息，检测链接
-    @filter.on_message()
+    @filter.event_message_type(filter.EventMessageType.ALL)()
     async def handle_link(self, event: AstrMessageEvent):
         msg = event.get_message().strip()
         if not msg:
